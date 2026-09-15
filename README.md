@@ -2,7 +2,7 @@
 
 AI-assisted social media content planning for local businesses.
 
-## Current version: V4 — Content Calendar
+## Current version: V5 — Automation + Analytics
 
 - Save reusable business branding profiles
 - Generate an Instagram post, caption, hashtags, and CTA
@@ -13,15 +13,22 @@ AI-assisted social media content planning for local businesses.
 - Use a saved brand profile when building the calendar
 - Export the branded post preview as PNG
 - SQLite persistence for brand profiles
+- Track impressions, reach, likes, comments, shares, saves, and clicks
+- Calculate engagement and click rates
+- Get rule-based performance recommendations
+- Create normalized scheduling records for future publisher integrations
+- Dedicated V5 Automation & Analytics dashboard at `/automation`
 - Local deterministic fallback when no AI API key is configured
 
 ## Architecture
 
 - `frontend/` — Next.js + React + TypeScript web app
+- `frontend/app/automation/page.tsx` — V5 analytics and scheduling dashboard
 - `backend/` — FastAPI API
 - `backend/app/services/content.py` — V1/V2 content generation
 - `backend/app/services/brands.py` — V3 SQLite brand persistence
 - `backend/app/services/calendar.py` — V4 calendar planning
+- `backend/app/services/automation.py` — V5 scheduling, analytics, and recommendations
 
 ## API
 
@@ -33,10 +40,13 @@ AI-assisted social media content planning for local businesses.
 - `DELETE /api/v1/brands/{brand_id}`
 - `POST /api/v1/generate`
 - `POST /api/v1/calendar`
+- `POST /api/v1/automation/schedule`
+- `POST /api/v1/analytics`
+- `POST /api/v1/analytics/recommendation`
 
-### Calendar request fields
+## V5 notes
 
-`business_type`, `business_name`, `product_name`, `offer`, `days` (7 or 30 in the UI), `start_date` (optional ISO date), `frequency` (2–7), and optional `brand_id`.
+The scheduling endpoint creates a normalized schedule record; it does not pretend to publish directly to Instagram. Actual publishing requires an approved social-platform connection and the appropriate credentials/permissions.
 
 ## Run locally
 
@@ -61,7 +71,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000` or `/automation`.
 
 ## Testing
 
@@ -71,7 +81,7 @@ From `backend/`:
 pytest
 ```
 
-The test suite covers V1/V2 content shape and V4 calendar output. Live dependency installation/build execution may require a network-enabled development environment.
+The suite includes V1/V2 content, V4 calendar, and V5 automation/analytics tests. Live dependency installation/build execution may require a network-enabled development environment.
 
 ## Product roadmap
 
