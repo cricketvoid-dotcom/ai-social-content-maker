@@ -4,11 +4,13 @@ from pydantic import BaseModel, Field
 from .services.automation import calculate_analytics, make_schedule_item, performance_recommendation
 from .services.brands import create_brand, delete_brand, get_brand, list_brands, update_brand
 from .services.calendar import generate_calendar
+from .services.connections import SUPPORTED_PROVIDERS, create_connection, delete_connection, list_connections
 from .services.content import generate_content
 from .services.optimizer import optimize_content
 from .services.platforms import generate_platform_content
+from .services.publisher import publish
 
-app = FastAPI(title="AI Social Content Maker API", version="7.0.0")
+app = FastAPI(title="AI Social Content Maker API", version="8.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 class BrandProfile(BaseModel):
     business_name: str = Field(min_length=1, max_length=100); business_type: str = Field(min_length=1, max_length=80); tagline: str = Field(default="", max_length=160); primary_color: str = Field(default="#171722", max_length=20); secondary_color: str = Field(default="#ffffff", max_length=20); accent_color: str = Field(default="#5146d8", max_length=20); font_family: str = Field(default="Inter", max_length=60); phone: str = Field(default="", max_length=40); location: str = Field(default="", max_length=160); social_handle: str = Field(default="", max_length=80); logo_data: str = Field(default="", max_length=2_500_000)
@@ -20,9 +22,11 @@ class AnalyticsResponse(BaseModel): impressions: int; reach: int; likes: int; co
 class RecommendationResponse(BaseModel): signal: str; recommendation: str
 class OptimizeResponse(BaseModel): content_type: str; strategy: str; hook: str; cta: str; recommended_length: str
 class PlatformContentResponse(BaseModel): business_name: str; platforms: dict[str, dict]
+class ConnectionResponse(BaseModel): id: int; provider: str; account_name: str; token_configured: int; status: str; created_at: str; updated_at: str
+class PublishResponse(BaseModel): mode: str; provider: str; account_name: str; status: str; job_id: str; message: str; content: dict
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"ai-social-content-maker","version":"7.0.0"}
+def health(): return {"status":"ok","service":"ai-social-content-maker","version":"8.0.0"}
 @app.get("/api/v1/brands", response_model=list[BrandResponse])
 def brands(): return list_brands()
 @app.post("/api/v1/brands", response_model=BrandResponse, status_code=201)
@@ -64,6 +68,25 @@ def optimizer(content_type: str=Form("Post"), title: str=Form(...), metrics: str
 def platforms(business_name: str=Form(...), topic: str=Form(...), base_caption: str=Form(""), platform_list: str=Form("Instagram,Facebook,YouTube Shorts,LinkedIn,X")):
     selected=[p.strip() for p in platform_list.split(",") if p.strip()]
     return generate_platform_content(business_name=business_name,topic=topic,base_caption=base_caption,platforms=selected)
+@app.get("/api/v1/connections", response_model=list[ConnectionResponse])
+def connections(): return list_connections()
+@app.post("/api/v1/connections", response_model=ConnectionResponse, status_code=201)
+def connect(provider: str=Form(...), account_name: str=Form(...), token: str=Form(...)):
+    try: return create_connection(provider=provider, account_name=account_name, token=token)
+    except ValueError as exc: raise HTTPException(400, str(exc))
+@app.delete("/api/v1/connections/{connection_id}")
+def disconnect(connection_id: int):
+    if not delete_connection(connection_id): raise HTTPException(404,"Connection not found")
+    return {"deleted": True, "id": connection_id}
+@app.get("/api/v1/providers")
+def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "V8 uses dry-run publishing until OAuth adapters are configured."}
+@app.post("/api/v1/publish", response_model=PublishResponse)
+def publish_content(provider: str=Form(...), account_name: str=Form(...), content: str=Form(...), dry_run: bool=Form(True)):
+    import json
+    try: parsed=json.loads(content)
+    except json.JSONDecodeError: raise HTTPException(400,"content must be valid JSON")
+    try: return publish(provider=provider,account_name=account_name,content=parsed,dry_run=dry_run)
+    except (ValueError, RuntimeError) as exc: raise HTTPException(400,str(exc))
 @app.post("/api/v1/generate", response_model=ContentResponse)
 async def generate(business_type:str=Form(...),business_name:str=Form(""),product_name:str=Form(...),offer:str=Form(""),price:str=Form(""),location:str=Form(""),phone:str=Form(""),additional_info:str=Form(""),brand_id:int|None=Form(None),brand_tagline:str=Form(""),brand_primary_color:str=Form("#171722"),brand_secondary_color:str=Form("#ffffff"),brand_accent_color:str=Form("#5146d8"),brand_font_family:str=Form("Inter"),brand_social_handle:str=Form(""),brand_logo:str=Form(""),photo:UploadFile|None=File(None)):
     if brand_id is not None and not get_brand(brand_id): raise HTTPException(404,"Brand profile not found")
