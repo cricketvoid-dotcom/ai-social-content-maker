@@ -1,8 +1,8 @@
 # AI Social Content Maker
 
-AI-assisted social media content planning, optimization, and publishing infrastructure for local businesses.
+AI-assisted social media content planning, optimization, analytics, and publishing infrastructure for local businesses.
 
-## Current version: V9 — OAuth-Ready Provider Architecture + Production Scheduler Core
+## Current version: V10 — Advanced Analytics + AI Growth Engine
 
 - Save reusable business branding profiles
 - Generate Instagram posts, captions, hashtags, and CTAs
@@ -20,7 +20,10 @@ AI-assisted social media content planning, optimization, and publishing infrastr
 - Safe dry-run publishing mode
 - Create queued scheduler jobs with scheduled timestamps
 - Retry failed jobs with a bounded three-attempt policy
-- Dedicated V8 account dashboard at `/connections`
+- Score individual content by engagement, sharing/saving, and click signals
+- Rank top-performing content and identify the strongest format
+- Generate actionable growth strategy and next experiments
+- Dedicated V10 AI Growth dashboard at `/growth`
 - Local deterministic fallback when no AI API key is configured
 
 ## Architecture
@@ -28,6 +31,7 @@ AI-assisted social media content planning, optimization, and publishing infrastr
 - `frontend/` — Next.js + React + TypeScript web app
 - `frontend/app/platforms/page.tsx` — V7 multi-platform dashboard
 - `frontend/app/connections/page.tsx` — V8 connection and publishing dashboard
+- `frontend/app/growth/page.tsx` — V10 advanced analytics and AI growth dashboard
 - `backend/` — FastAPI API
 - `backend/app/services/content.py` — V1/V2 generation
 - `backend/app/services/brands.py` — V3 SQLite branding
@@ -38,16 +42,14 @@ AI-assisted social media content planning, optimization, and publishing infrastr
 - `backend/app/services/connections.py` — V8 connection records
 - `backend/app/services/publisher.py` — V8 publishing abstraction and dry-run safety layer
 - `backend/app/services/scheduler.py` — V9 queued jobs and bounded retry handling
+- `backend/app/services/growth.py` — V10 growth scoring and strategy engine
 
-## V9 API
+## V10 API
 
-- `POST /api/v1/scheduler/jobs`
-- `POST /api/v1/scheduler/retry`
-- Existing V8 connection and publishing endpoints remain available
+- `POST /api/v1/growth/insights`
+- Existing V1–V9 APIs remain available
 
-V9 creates provider-neutral scheduler jobs. It does **not** claim that a social account is live-connected or that content has been published. Real provider adapters still require the platform's approved OAuth flow, permissions, account configuration, media rules, and secure credential handling.
-
-For example, YouTube's current `videos.insert` endpoint requires OAuth authorization for uploads, while LinkedIn's current Posts API supports creating organic posts with the appropriate authorization. citeturn0search0turn0search5
+V10 turns post-level performance data into deterministic growth signals. It ranks winning content, compares formats, and suggests focused experiments. It does not claim that historical metrics prove future performance; recommendations are decision-support signals that should be tested.
 
 ## Testing
 
@@ -57,7 +59,7 @@ From `backend/`:
 pytest
 ```
 
-The suite covers content generation, calendar planning, automation/analytics, V6 optimization, V7 platform transformation, V8 connection/publisher safety behavior, and V9 scheduler retry behavior. Live dependency installation/build execution may require a network-enabled development environment.
+The suite covers content generation, calendar planning, automation/analytics, V6 optimization, V7 platform transformation, V8 connection/publisher safety behavior, V9 scheduler retry behavior, and V10 growth scoring/insights. Live dependency installation/build execution may require a network-enabled development environment.
 
 ## Product roadmap
 
@@ -70,4 +72,4 @@ The suite covers content generation, calendar planning, automation/analytics, V6
 - V7 — Multi-Platform Content Engine
 - V8 — Account Connections + Safe Publishing Pipeline
 - V9 — OAuth-ready provider architecture + production scheduler core
-- V10 — Advanced analytics + AI growth engine
+- V10 — Advanced Analytics + AI Growth Engine
