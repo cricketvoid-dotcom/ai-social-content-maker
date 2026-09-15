@@ -1,8 +1,8 @@
 # AI Social Content Maker
 
-AI-assisted social media content planning and optimization for local businesses.
+AI-assisted social media content planning, optimization, and publishing infrastructure for local businesses.
 
-## Current version: V7 — Multi-Platform Content Engine
+## Current version: V8 — Account Connections + Safe Publishing Pipeline
 
 - Save reusable business branding profiles
 - Generate Instagram posts, captions, hashtags, and CTAs
@@ -13,16 +13,20 @@ AI-assisted social media content planning and optimization for local businesses.
 - Calculate engagement and click rates
 - Get performance recommendations
 - Create normalized scheduling records
-- Optimize a content idea using its performance metrics
+- Optimize content using performance metrics
 - Generate platform-specific content for Instagram, Facebook, YouTube Shorts, LinkedIn, and X
-- Platform-aware text limits, formats, CTAs, and hashtag suggestions
-- Dedicated V7 dashboard at `/platforms`
+- Store social account connection metadata without returning authorization tokens
+- Disconnect saved accounts
+- Validate publishing payloads
+- Run a safe publisher dry-run that makes no external social-platform request
+- Dedicated V8 account dashboard at `/connections`
 - Local deterministic fallback when no AI API key is configured
 
 ## Architecture
 
 - `frontend/` — Next.js + React + TypeScript web app
 - `frontend/app/platforms/page.tsx` — V7 multi-platform dashboard
+- `frontend/app/connections/page.tsx` — V8 connection and publishing dashboard
 - `backend/` — FastAPI API
 - `backend/app/services/content.py` — V1/V2 generation
 - `backend/app/services/brands.py` — V3 SQLite branding
@@ -30,20 +34,24 @@ AI-assisted social media content planning and optimization for local businesses.
 - `backend/app/services/automation.py` — V5 analytics and scheduling
 - `backend/app/services/optimizer.py` — V6 performance-driven optimization
 - `backend/app/services/platforms.py` — V7 platform-specific content transformation
+- `backend/app/services/connections.py` — V8 connection records
+- `backend/app/services/publisher.py` — V8 publishing abstraction and dry-run safety layer
 
-## V7 API
+## V8 API
 
-`POST /api/v1/platforms`
+- `GET /api/v1/providers`
+- `GET /api/v1/connections`
+- `POST /api/v1/connections`
+- `DELETE /api/v1/connections/{connection_id}`
+- `POST /api/v1/publish`
 
-Fields:
-- `business_name`: business name
-- `topic`: campaign/topic
-- `base_caption`: optional starting caption
-- `platform_list`: comma-separated platform names
+V8 intentionally defaults to a **dry-run publisher**. It does not claim to publish to Instagram, Facebook, YouTube, LinkedIn, or X without the required OAuth authorization, platform-specific permissions, media handling, and approved developer configuration.
 
-Supported platforms: Instagram, Facebook, YouTube Shorts, LinkedIn, X.
+Authorization tokens are never returned by the connection API. The current V8 database stores only a short SHA-256 fingerprint and connection metadata; it is not yet a production-grade OAuth token vault.
 
-V7 generates content variations locally and does not claim access to any user's social account. Live publishing requires each platform's approved developer access, OAuth/authorization, and applicable permissions.
+## Platform API considerations
+
+Platform integrations have different authorization and publishing requirements. For example, YouTube's `videos.insert` requires OAuth authorization and supports video upload, while LinkedIn's current Posts API supports creating posts with the appropriate permissions. These requirements are kept behind provider adapters instead of being hard-coded into the core content engine.
 
 ## Testing
 
@@ -53,7 +61,7 @@ From `backend/`:
 pytest
 ```
 
-The suite covers content generation, calendar planning, automation/analytics, V6 optimization, and V7 platform transformation. Live dependency installation/build execution may require a network-enabled development environment.
+The suite covers content generation, calendar planning, automation/analytics, V6 optimization, V7 platform transformation, and V8 connection/publisher safety behavior. Live dependency installation/build execution may require a network-enabled development environment.
 
 ## Product roadmap
 
@@ -64,3 +72,5 @@ The suite covers content generation, calendar planning, automation/analytics, V6
 - V5 — Automation + analytics
 - V6 — Smart Content Optimizer
 - V7 — Multi-Platform Content Engine
+- V8 — Account Connections + Safe Publishing Pipeline
+- V9 — Approved OAuth provider adapters + production scheduler
