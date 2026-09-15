@@ -34,7 +34,13 @@ def _fallback_image(data: bytes) -> dict[str, Any]:
     }
 
 
-async def create_marketing_image(*, image_bytes: bytes, prompt: str, business_name: str = "", product_name: str = "") -> dict[str, Any]:
+async def create_marketing_image(
+    *,
+    image_bytes: bytes,
+    prompt: str,
+    business_name: str = "",
+    product_name: str = "",
+) -> dict[str, Any]:
     normalised = _normalise_image(image_bytes)
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
@@ -43,30 +49,38 @@ async def create_marketing_image(*, image_bytes: bytes, prompt: str, business_na
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=api_key)
-    model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1")
+    # GPT-Image-2 is the current OpenAI image model and supports reference-image editing.
+    model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2").strip() or "gpt-image-2"
     context = ", ".join(x for x in [business_name.strip(), product_name.strip()] if x.strip())
     full_prompt = (
-        "Transform this ordinary business photo into a polished, realistic social-media marketing photo. "
-        "Preserve the identity and important visual characteristics of the actual product or subject. "
-        "Improve lighting, clarity, composition and background while keeping the result believable and commercially useful. "
-        "Do not add people, fake logos, fake prices, watermarks, or unrelated products. "
+        "Upgrade this low-quality ordinary smartphone business photo into a high-quality, realistic,
+        professional marketing photograph. "
+        "Preserve the actual product identity, shape, quantity, colors, and important visual details of the source photo. "
+        "Improve resolution, sharpness, exposure, white balance, lighting, depth, composition, and background cleanliness. "
+        "Remove ordinary smartphone noise, blur, compression artifacts, distracting clutter, and poor lighting while keeping the product believable. "
+        "Do not replace the product with a different product. Do not invent people, fake logos, fake prices, watermarks, or unrelated objects. "
+        "The final image should look like a premium commercial photo of the same real product, not an obviously AI-generated scene. "
         f"Business context: {context or 'local business'}. "
         f"Additional creative direction: {prompt.strip() or 'clean premium natural product photography'}"
     )
 
     response = await client.images.edit(
         model=model,
-        image=normalised,
+        image=[io.BytesIO(normalised)],
         prompt=full_prompt,
         size="1024x1024",
-        quality="medium",
+        quality="high",
+        input_fidelity="high",
+        output_format="png",
     )
+    if not response.data:
+        raise RuntimeError("The image model returned no image data.")
     b64 = getattr(response.data[0], "b64_json", None)
     if not b64:
         raise RuntimeError("The image model returned no image data.")
     return {
         "status": "generated",
-        "message": "AI marketing image generated successfully.",
+        "message": "Low-quality source photo upgraded into a high-quality marketing image successfully.",
         "image_data": f"data:image/png;base64,{b64}",
         "model": model,
     }
