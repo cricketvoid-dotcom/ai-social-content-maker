@@ -2,7 +2,7 @@
 
 AI-assisted social media content planning and optimization for local businesses.
 
-## Current version: V6 — Smart Content Optimizer
+## Current version: V7 — Multi-Platform Content Engine
 
 - Save reusable business branding profiles
 - Generate Instagram posts, captions, hashtags, and CTAs
@@ -14,29 +14,36 @@ AI-assisted social media content planning and optimization for local businesses.
 - Get performance recommendations
 - Create normalized scheduling records
 - Optimize a content idea using its performance metrics
-- Receive a stronger hook, CTA, strategy, and recommended format length
+- Generate platform-specific content for Instagram, Facebook, YouTube Shorts, LinkedIn, and X
+- Platform-aware text limits, formats, CTAs, and hashtag suggestions
+- Dedicated V7 dashboard at `/platforms`
 - Local deterministic fallback when no AI API key is configured
 
 ## Architecture
 
 - `frontend/` — Next.js + React + TypeScript web app
+- `frontend/app/platforms/page.tsx` — V7 multi-platform dashboard
 - `backend/` — FastAPI API
 - `backend/app/services/content.py` — V1/V2 generation
 - `backend/app/services/brands.py` — V3 SQLite branding
 - `backend/app/services/calendar.py` — V4 planning
 - `backend/app/services/automation.py` — V5 analytics and scheduling
 - `backend/app/services/optimizer.py` — V6 performance-driven optimization
+- `backend/app/services/platforms.py` — V7 platform-specific content transformation
 
-## V6 API
+## V7 API
 
-`POST /api/v1/optimizer`
+`POST /api/v1/platforms`
 
 Fields:
-- `content_type`: Reel, Carousel, Post, or Story
-- `title`: content title
-- `metrics`: JSON string containing analytics metrics
+- `business_name`: business name
+- `topic`: campaign/topic
+- `base_caption`: optional starting caption
+- `platform_list`: comma-separated platform names
 
-The optimizer is intentionally deterministic and explainable. It does not invent historical performance or claim access to a social platform account.
+Supported platforms: Instagram, Facebook, YouTube Shorts, LinkedIn, X.
+
+V7 generates content variations locally and does not claim access to any user's social account. Live publishing requires each platform's approved developer access, OAuth/authorization, and applicable permissions.
 
 ## Testing
 
@@ -46,7 +53,7 @@ From `backend/`:
 pytest
 ```
 
-The suite covers content generation, calendar planning, automation/analytics, and V6 optimization. Live dependency installation/build execution may require a network-enabled development environment.
+The suite covers content generation, calendar planning, automation/analytics, V6 optimization, and V7 platform transformation. Live dependency installation/build execution may require a network-enabled development environment.
 
 ## Product roadmap
 
@@ -56,3 +63,4 @@ The suite covers content generation, calendar planning, automation/analytics, an
 - V4 — Content Calendar
 - V5 — Automation + analytics
 - V6 — Smart Content Optimizer
+- V7 — Multi-Platform Content Engine
