@@ -49,12 +49,11 @@ async def create_marketing_image(
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=api_key)
-    # GPT-Image-2 is the current OpenAI image model and supports reference-image editing.
     model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2").strip() or "gpt-image-2"
     context = ", ".join(x for x in [business_name.strip(), product_name.strip()] if x.strip())
     full_prompt = (
-        "Upgrade this low-quality ordinary smartphone business photo into a high-quality, realistic,
-        professional marketing photograph. "
+        "Upgrade this low-quality ordinary smartphone business photo into a high-quality, realistic, "
+        "professional marketing photograph. "
         "Preserve the actual product identity, shape, quantity, colors, and important visual details of the source photo. "
         "Improve resolution, sharpness, exposure, white balance, lighting, depth, composition, and background cleanliness. "
         "Remove ordinary smartphone noise, blur, compression artifacts, distracting clutter, and poor lighting while keeping the product believable. "
