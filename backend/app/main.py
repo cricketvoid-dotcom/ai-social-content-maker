@@ -6,8 +6,9 @@ from .services.brands import create_brand, delete_brand, get_brand, list_brands,
 from .services.calendar import generate_calendar
 from .services.content import generate_content
 from .services.optimizer import optimize_content
+from .services.platforms import generate_platform_content
 
-app = FastAPI(title="AI Social Content Maker API", version="6.0.0")
+app = FastAPI(title="AI Social Content Maker API", version="7.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 class BrandProfile(BaseModel):
     business_name: str = Field(min_length=1, max_length=100); business_type: str = Field(min_length=1, max_length=80); tagline: str = Field(default="", max_length=160); primary_color: str = Field(default="#171722", max_length=20); secondary_color: str = Field(default="#ffffff", max_length=20); accent_color: str = Field(default="#5146d8", max_length=20); font_family: str = Field(default="Inter", max_length=60); phone: str = Field(default="", max_length=40); location: str = Field(default="", max_length=160); social_handle: str = Field(default="", max_length=80); logo_data: str = Field(default="", max_length=2_500_000)
@@ -18,9 +19,10 @@ class CalendarResponse(BaseModel): business_name: str; business_type: str; perio
 class AnalyticsResponse(BaseModel): impressions: int; reach: int; likes: int; comments: int; shares: int; saves: int; clicks: int; engagements: int; engagement_rate: float; click_rate: float
 class RecommendationResponse(BaseModel): signal: str; recommendation: str
 class OptimizeResponse(BaseModel): content_type: str; strategy: str; hook: str; cta: str; recommended_length: str
+class PlatformContentResponse(BaseModel): business_name: str; platforms: dict[str, dict]
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"ai-social-content-maker","version":"6.0.0"}
+def health(): return {"status":"ok","service":"ai-social-content-maker","version":"7.0.0"}
 @app.get("/api/v1/brands", response_model=list[BrandResponse])
 def brands(): return list_brands()
 @app.post("/api/v1/brands", response_model=BrandResponse, status_code=201)
@@ -58,6 +60,10 @@ def optimizer(content_type: str=Form("Post"), title: str=Form(...), metrics: str
     try: parsed=json.loads(metrics)
     except json.JSONDecodeError: raise HTTPException(400,"metrics must be valid JSON")
     return optimize_content(content_type=content_type,title=title,metrics=parsed)
+@app.post("/api/v1/platforms", response_model=PlatformContentResponse)
+def platforms(business_name: str=Form(...), topic: str=Form(...), base_caption: str=Form(""), platform_list: str=Form("Instagram,Facebook,YouTube Shorts,LinkedIn,X")):
+    selected=[p.strip() for p in platform_list.split(",") if p.strip()]
+    return generate_platform_content(business_name=business_name,topic=topic,base_caption=base_caption,platforms=selected)
 @app.post("/api/v1/generate", response_model=ContentResponse)
 async def generate(business_type:str=Form(...),business_name:str=Form(""),product_name:str=Form(...),offer:str=Form(""),price:str=Form(""),location:str=Form(""),phone:str=Form(""),additional_info:str=Form(""),brand_id:int|None=Form(None),brand_tagline:str=Form(""),brand_primary_color:str=Form("#171722"),brand_secondary_color:str=Form("#ffffff"),brand_accent_color:str=Form("#5146d8"),brand_font_family:str=Form("Inter"),brand_social_handle:str=Form(""),brand_logo:str=Form(""),photo:UploadFile|None=File(None)):
     if brand_id is not None and not get_brand(brand_id): raise HTTPException(404,"Brand profile not found")
