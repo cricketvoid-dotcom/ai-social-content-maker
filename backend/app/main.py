@@ -9,8 +9,9 @@ from .services.content import generate_content
 from .services.optimizer import optimize_content
 from .services.platforms import generate_platform_content
 from .services.publisher import publish
+from .services.scheduler import create_job, retry_job
 
-app = FastAPI(title="AI Social Content Maker API", version="8.0.0")
+app = FastAPI(title="AI Social Content Maker API", version="9.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 class BrandProfile(BaseModel):
     business_name: str = Field(min_length=1, max_length=100); business_type: str = Field(min_length=1, max_length=80); tagline: str = Field(default="", max_length=160); primary_color: str = Field(default="#171722", max_length=20); secondary_color: str = Field(default="#ffffff", max_length=20); accent_color: str = Field(default="#5146d8", max_length=20); font_family: str = Field(default="Inter", max_length=60); phone: str = Field(default="", max_length=40); location: str = Field(default="", max_length=160); social_handle: str = Field(default="", max_length=80); logo_data: str = Field(default="", max_length=2_500_000)
@@ -26,7 +27,7 @@ class ConnectionResponse(BaseModel): id: int; provider: str; account_name: str; 
 class PublishResponse(BaseModel): mode: str; provider: str; account_name: str; status: str; job_id: str; message: str; content: dict
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"ai-social-content-maker","version":"8.0.0"}
+def health(): return {"status":"ok","service":"ai-social-content-maker","version":"9.0.0"}
 @app.get("/api/v1/brands", response_model=list[BrandResponse])
 def brands(): return list_brands()
 @app.post("/api/v1/brands", response_model=BrandResponse, status_code=201)
@@ -79,7 +80,7 @@ def disconnect(connection_id: int):
     if not delete_connection(connection_id): raise HTTPException(404,"Connection not found")
     return {"deleted": True, "id": connection_id}
 @app.get("/api/v1/providers")
-def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "V8 uses dry-run publishing until OAuth adapters are configured."}
+def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "V9 adds queued jobs and retry handling; live OAuth adapters remain disabled until configured."}
 @app.post("/api/v1/publish", response_model=PublishResponse)
 def publish_content(provider: str=Form(...), account_name: str=Form(...), content: str=Form(...), dry_run: bool=Form(True)):
     import json
@@ -87,6 +88,14 @@ def publish_content(provider: str=Form(...), account_name: str=Form(...), conten
     except json.JSONDecodeError: raise HTTPException(400,"content must be valid JSON")
     try: return publish(provider=provider,account_name=account_name,content=parsed,dry_run=dry_run)
     except (ValueError, RuntimeError) as exc: raise HTTPException(400,str(exc))
+@app.post("/api/v1/scheduler/jobs")
+def scheduler_job(provider: str=Form(...), account_name: str=Form(...), content: str=Form(...), scheduled_at: str|None=Form(None)):
+    import json
+    try: parsed=json.loads(content)
+    except json.JSONDecodeError: raise HTTPException(400,"content must be valid JSON")
+    return create_job(provider=provider,account_name=account_name,content=parsed,scheduled_at=scheduled_at)
+@app.post("/api/v1/scheduler/retry")
+def scheduler_retry(job: dict, error: str=Form("publish failed")): return retry_job(job,error=error)
 @app.post("/api/v1/generate", response_model=ContentResponse)
 async def generate(business_type:str=Form(...),business_name:str=Form(""),product_name:str=Form(...),offer:str=Form(""),price:str=Form(""),location:str=Form(""),phone:str=Form(""),additional_info:str=Form(""),brand_id:int|None=Form(None),brand_tagline:str=Form(""),brand_primary_color:str=Form("#171722"),brand_secondary_color:str=Form("#ffffff"),brand_accent_color:str=Form("#5146d8"),brand_font_family:str=Form("Inter"),brand_social_handle:str=Form(""),brand_logo:str=Form(""),photo:UploadFile|None=File(None)):
     if brand_id is not None and not get_brand(brand_id): raise HTTPException(404,"Brand profile not found")
