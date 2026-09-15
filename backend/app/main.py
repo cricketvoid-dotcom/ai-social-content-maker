@@ -6,12 +6,13 @@ from .services.brands import create_brand, delete_brand, get_brand, list_brands,
 from .services.calendar import generate_calendar
 from .services.connections import SUPPORTED_PROVIDERS, create_connection, delete_connection, list_connections
 from .services.content import generate_content
+from .services.growth import growth_insights
 from .services.optimizer import optimize_content
 from .services.platforms import generate_platform_content
 from .services.publisher import publish
 from .services.scheduler import create_job, retry_job
 
-app = FastAPI(title="AI Social Content Maker API", version="9.0.0")
+app = FastAPI(title="AI Social Content Maker API", version="10.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 class BrandProfile(BaseModel):
     business_name: str = Field(min_length=1, max_length=100); business_type: str = Field(min_length=1, max_length=80); tagline: str = Field(default="", max_length=160); primary_color: str = Field(default="#171722", max_length=20); secondary_color: str = Field(default="#ffffff", max_length=20); accent_color: str = Field(default="#5146d8", max_length=20); font_family: str = Field(default="Inter", max_length=60); phone: str = Field(default="", max_length=40); location: str = Field(default="", max_length=160); social_handle: str = Field(default="", max_length=80); logo_data: str = Field(default="", max_length=2_500_000)
@@ -25,9 +26,10 @@ class OptimizeResponse(BaseModel): content_type: str; strategy: str; hook: str; 
 class PlatformContentResponse(BaseModel): business_name: str; platforms: dict[str, dict]
 class ConnectionResponse(BaseModel): id: int; provider: str; account_name: str; token_configured: int; status: str; created_at: str; updated_at: str
 class PublishResponse(BaseModel): mode: str; provider: str; account_name: str; status: str; job_id: str; message: str; content: dict
+class GrowthResponse(BaseModel): posts_analyzed: int; best_format: str; format_scores: dict[str, float]; top_posts: list[dict]; strategy: str; next_tests: list[str]
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"ai-social-content-maker","version":"9.0.0"}
+def health(): return {"status":"ok","service":"ai-social-content-maker","version":"10.0.0"}
 @app.get("/api/v1/brands", response_model=list[BrandResponse])
 def brands(): return list_brands()
 @app.post("/api/v1/brands", response_model=BrandResponse, status_code=201)
@@ -65,6 +67,8 @@ def optimizer(content_type: str=Form("Post"), title: str=Form(...), metrics: str
     try: parsed=json.loads(metrics)
     except json.JSONDecodeError: raise HTTPException(400,"metrics must be valid JSON")
     return optimize_content(content_type=content_type,title=title,metrics=parsed)
+@app.post("/api/v1/growth/insights", response_model=GrowthResponse)
+def growth(items: list[dict]): return growth_insights(items=items)
 @app.post("/api/v1/platforms", response_model=PlatformContentResponse)
 def platforms(business_name: str=Form(...), topic: str=Form(...), base_caption: str=Form(""), platform_list: str=Form("Instagram,Facebook,YouTube Shorts,LinkedIn,X")):
     selected=[p.strip() for p in platform_list.split(",") if p.strip()]
@@ -80,7 +84,7 @@ def disconnect(connection_id: int):
     if not delete_connection(connection_id): raise HTTPException(404,"Connection not found")
     return {"deleted": True, "id": connection_id}
 @app.get("/api/v1/providers")
-def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "V9 adds queued jobs and retry handling; live OAuth adapters remain disabled until configured."}
+def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "V10 adds growth insights; live OAuth adapters remain disabled until configured."}
 @app.post("/api/v1/publish", response_model=PublishResponse)
 def publish_content(provider: str=Form(...), account_name: str=Form(...), content: str=Form(...), dry_run: bool=Form(True)):
     import json
