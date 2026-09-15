@@ -6,13 +6,14 @@ from .services.brands import create_brand, delete_brand, get_brand, list_brands,
 from .services.calendar import generate_calendar
 from .services.connections import SUPPORTED_PROVIDERS, create_connection, delete_connection, list_connections
 from .services.content import generate_content
+from .services.creative import create_marketing_image
 from .services.growth import growth_insights
 from .services.optimizer import optimize_content
 from .services.platforms import generate_platform_content
 from .services.publisher import publish
 from .services.scheduler import create_job, retry_job
 
-app = FastAPI(title="AI Social Content Maker API", version="10.0.0")
+app = FastAPI(title="AI Social Content Maker API", version="10.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 class BrandProfile(BaseModel):
     business_name: str = Field(min_length=1, max_length=100); business_type: str = Field(min_length=1, max_length=80); tagline: str = Field(default="", max_length=160); primary_color: str = Field(default="#171722", max_length=20); secondary_color: str = Field(default="#ffffff", max_length=20); accent_color: str = Field(default="#5146d8", max_length=20); font_family: str = Field(default="Inter", max_length=60); phone: str = Field(default="", max_length=40); location: str = Field(default="", max_length=160); social_handle: str = Field(default="", max_length=80); logo_data: str = Field(default="", max_length=2_500_000)
@@ -27,9 +28,10 @@ class PlatformContentResponse(BaseModel): business_name: str; platforms: dict[st
 class ConnectionResponse(BaseModel): id: int; provider: str; account_name: str; token_configured: int; status: str; created_at: str; updated_at: str
 class PublishResponse(BaseModel): mode: str; provider: str; account_name: str; status: str; job_id: str; message: str; content: dict
 class GrowthResponse(BaseModel): posts_analyzed: int; best_format: str; format_scores: dict[str, float]; top_posts: list[dict]; strategy: str; next_tests: list[str]
+class CreativeImageResponse(BaseModel): status: str; message: str; image_data: str; model: str | None = None
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"ai-social-content-maker","version":"10.0.0"}
+def health(): return {"status":"ok","service":"ai-social-content-maker","version":"10.1.0"}
 @app.get("/api/v1/brands", response_model=list[BrandResponse])
 def brands(): return list_brands()
 @app.post("/api/v1/brands", response_model=BrandResponse, status_code=201)
@@ -84,7 +86,7 @@ def disconnect(connection_id: int):
     if not delete_connection(connection_id): raise HTTPException(404,"Connection not found")
     return {"deleted": True, "id": connection_id}
 @app.get("/api/v1/providers")
-def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "V10 adds growth insights; live OAuth adapters remain disabled until configured."}
+def providers(): return {"providers": list(SUPPORTED_PROVIDERS), "live_publishing": False, "message": "Dry-run publishing remains enabled until real OAuth adapters are configured."}
 @app.post("/api/v1/publish", response_model=PublishResponse)
 def publish_content(provider: str=Form(...), account_name: str=Form(...), content: str=Form(...), dry_run: bool=Form(True)):
     import json
@@ -100,6 +102,15 @@ def scheduler_job(provider: str=Form(...), account_name: str=Form(...), content:
     return create_job(provider=provider,account_name=account_name,content=parsed,scheduled_at=scheduled_at)
 @app.post("/api/v1/scheduler/retry")
 def scheduler_retry(job: dict, error: str=Form("publish failed")): return retry_job(job,error=error)
+@app.post("/api/v1/creative/image", response_model=CreativeImageResponse)
+async def creative_image(image: UploadFile=File(...), prompt: str=Form(""), business_name: str=Form(""), product_name: str=Form("")):
+    try:
+        result = await create_marketing_image(image_bytes=await image.read(), prompt=prompt, business_name=business_name, product_name=product_name)
+        return CreativeImageResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:
+        raise HTTPException(502, f"Image generation failed: {exc}")
 @app.post("/api/v1/generate", response_model=ContentResponse)
 async def generate(business_type:str=Form(...),business_name:str=Form(""),product_name:str=Form(...),offer:str=Form(""),price:str=Form(""),location:str=Form(""),phone:str=Form(""),additional_info:str=Form(""),brand_id:int|None=Form(None),brand_tagline:str=Form(""),brand_primary_color:str=Form("#171722"),brand_secondary_color:str=Form("#ffffff"),brand_accent_color:str=Form("#5146d8"),brand_font_family:str=Form("Inter"),brand_social_handle:str=Form(""),brand_logo:str=Form(""),photo:UploadFile|None=File(None)):
     if brand_id is not None and not get_brand(brand_id): raise HTTPException(404,"Brand profile not found")
