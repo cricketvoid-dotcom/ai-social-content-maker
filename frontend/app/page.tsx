@@ -1,58 +1,242 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import { toPng } from "html-to-image";
+import { ChangeEvent, useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-type Brand = { id: number; business_name: string; business_type: string; tagline: string; primary_color: string; secondary_color: string; accent_color: string; font_family: string; phone: string; location: string; social_handle: string; logo_data: string; created_at: string; updated_at: string };
+
 type Reel = { title: string; hook: string; script: string[]; duration: string };
-type Carousel = { title: string; slides: string[] };
-type Result = { headline: string; subheadline: string; caption: string; hashtags: string[]; cta: string; design: Record<string, any>; reel_ideas: Reel[]; carousel_ideas: Carousel[]; posting_suggestion: { best_days: string[]; best_time: string; frequency: string; tip: string } };
-type CalendarItem = { date: string; day: string; content_type: string; title: string; concept: string; status: string };
-type Calendar = { business_name: string; business_type: string; period_days: number; frequency_per_week: number; calendar: CalendarItem[] };
-type CreativeContent = Pick<Result, "headline" | "subheadline" | "caption" | "hashtags" | "cta" | "reel_ideas">;
-const initial = { businessType: "", businessName: "", productName: "", offer: "", price: "", location: "", phone: "", additionalInfo: "" };
-const emptyBrand = { business_name: "", business_type: "", tagline: "", primary_color: "#171722", secondary_color: "#ffffff", accent_color: "#5146d8", font_family: "Inter", phone: "", location: "", social_handle: "", logo_data: "" };
+type CreativeContent = {
+  headline: string;
+  subheadline: string;
+  caption: string;
+  hashtags: string[];
+  cta: string;
+  reel_ideas: Reel[];
+};
+
+const initial = {
+  businessName: "",
+  businessType: "",
+  phone: "",
+  address: "",
+  additionalInfo: "",
+  productName: "",
+  offer: "",
+};
 
 export default function Home() {
-  const [form, setForm] = useState(initial); const [photo, setPhoto] = useState(""); const [result, setResult] = useState<Result | null>(null);
-  const [brands, setBrands] = useState<Brand[]>([]); const [brand, setBrand] = useState(emptyBrand); const [selectedBrandId, setSelectedBrandId] = useState("");
-  const [calendar, setCalendar] = useState<Calendar | null>(null); const [calendarDays, setCalendarDays] = useState("7"); const [frequency, setFrequency] = useState("4"); const [calendarLoading, setCalendarLoading] = useState(false);
-  const [loading, setLoading] = useState(false); const [brandLoading, setBrandLoading] = useState(false); const [error, setError] = useState(""); const [brandMessage, setBrandMessage] = useState("");
-  const [creativeFile, setCreativeFile] = useState<File | null>(null); const [creativePreview, setCreativePreview] = useState(""); const [creativeImage, setCreativeImage] = useState(""); const [creativeContent, setCreativeContent] = useState<CreativeContent | null>(null); const [creativeLoading, setCreativeLoading] = useState(false); const [creativeError, setCreativeError] = useState("");
-  const [creativePrompt, setCreativePrompt] = useState("Premium realistic marketing photography, improve lighting, sharpness, composition and background while preserving the exact product.");
-  async function loadBrands() { try { const r = await fetch(`${API_URL}/api/v1/brands`); if (r.ok) setBrands(await r.json()); } catch {} }
-  useEffect(() => { loadBrands(); }, []); useEffect(() => () => { if (photo) URL.revokeObjectURL(photo); if (creativePreview) URL.revokeObjectURL(creativePreview); }, [photo, creativePreview]);
-  function update(key: keyof typeof initial, value: string) { setForm((old) => ({ ...old, [key]: value })); }
-  function updateBrand(key: keyof typeof emptyBrand, value: string) { setBrand((old) => ({ ...old, [key]: value })); }
-  function selectBrand(id: string) { setSelectedBrandId(id); const found = brands.find((b) => String(b.id) === id); if (!found) return; setBrand(found); setForm((old) => ({ ...old, businessName: found.business_name, businessType: found.business_type, phone: found.phone, location: found.location })); }
-  function onPhoto(e: ChangeEvent<HTMLInputElement>) { const file = e.target.files?.[0]; if (!file) return; if (photo) URL.revokeObjectURL(photo); setPhoto(URL.createObjectURL(file)); }
-  function onCreativeFile(e: ChangeEvent<HTMLInputElement>) { const file = e.target.files?.[0] || null; if (creativePreview) URL.revokeObjectURL(creativePreview); setCreativeFile(file); setCreativeImage(""); setCreativeContent(null); setCreativePreview(file ? URL.createObjectURL(file) : ""); setCreativeError(""); }
-  function onLogo(e: ChangeEvent<HTMLInputElement>) { const file = e.target.files?.[0]; if (!file) return; if (file.size > 1_500_000) { setBrandMessage("Logo must be under 1.5 MB."); return; } const reader = new FileReader(); reader.onload = () => updateBrand("logo_data", String(reader.result)); reader.readAsDataURL(file); }
-  async function saveBrand() { setBrandLoading(true); setBrandMessage(""); try { const method = selectedBrandId ? "PUT" : "POST"; const url = selectedBrandId ? `${API_URL}/api/v1/brands/${selectedBrandId}` : `${API_URL}/api/v1/brands`; const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(brand) }); if (!r.ok) throw new Error(await r.text()); const saved: Brand = await r.json(); setSelectedBrandId(String(saved.id)); setBrand(saved); setForm((old) => ({ ...old, businessName: saved.business_name, businessType: saved.business_type, phone: saved.phone, location: saved.location })); await loadBrands(); setBrandMessage("Brand profile saved ✓"); } catch (e) { setBrandMessage(e instanceof Error ? e.message : "Could not save brand"); } finally { setBrandLoading(false); } }
-  async function deleteBrand() { if (!selectedBrandId) return; setBrandLoading(true); try { const r = await fetch(`${API_URL}/api/v1/brands/${selectedBrandId}`, { method: "DELETE" }); if (!r.ok) throw new Error(await r.text()); setSelectedBrandId(""); setBrand(emptyBrand); await loadBrands(); setBrandMessage("Brand profile deleted"); } catch (e) { setBrandMessage(e instanceof Error ? e.message : "Could not delete brand"); } finally { setBrandLoading(false); } }
-  async function generate(e: FormEvent) { e.preventDefault(); setLoading(true); setError(""); try { const data = new FormData(); Object.entries(form).forEach(([key, value]) => data.append(key.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`), value)); if (selectedBrandId) data.append("brand_id", selectedBrandId); data.append("brand_tagline", brand.tagline); data.append("brand_primary_color", brand.primary_color); data.append("brand_secondary_color", brand.secondary_color); data.append("brand_accent_color", brand.accent_color); data.append("brand_font_family", brand.font_family); data.append("brand_social_handle", brand.social_handle); data.append("brand_logo", brand.logo_data); const input = document.querySelector<HTMLInputElement>("#photo"); if (input?.files?.[0]) data.append("photo", input.files[0]); const response = await fetch(`${API_URL}/api/v1/generate`, { method: "POST", body: data }); if (!response.ok) throw new Error((await response.text()) || "Generation failed"); setResult(await response.json()); } catch (err) { setError(err instanceof Error ? err.message : "Something went wrong"); } finally { setLoading(false); } }
-  async function runCreative(e: FormEvent) { e.preventDefault(); if (!creativeFile) { setCreativeError("Upload a photo first."); return; } setCreativeLoading(true); setCreativeError(""); setCreativeImage(""); setCreativeContent(null); try { const imageData = new FormData(); imageData.append("image", creativeFile); imageData.append("prompt", creativePrompt); imageData.append("business_name", form.businessName || brand.business_name); imageData.append("product_name", form.productName); const imageResponse = await fetch(`${API_URL}/api/v1/creative/image`, { method: "POST", body: imageData }); if (!imageResponse.ok) throw new Error((await imageResponse.text()) || "Image generation failed"); const imageResult = await imageResponse.json(); setCreativeImage(imageResult.image_data); const contentData = new FormData(); contentData.append("business_type", form.businessType || brand.business_type); contentData.append("business_name", form.businessName || brand.business_name); contentData.append("product_name", form.productName); contentData.append("offer", form.offer); contentData.append("additional_info", "Create social content around the uploaded product photo and upgraded marketing image."); const contentResponse = await fetch(`${API_URL}/api/v1/generate`, { method: "POST", body: contentData }); if (!contentResponse.ok) throw new Error((await contentResponse.text()) || "Content generation failed"); setCreativeContent(await contentResponse.json()); } catch (err) { setCreativeError(err instanceof Error ? err.message : "Something went wrong."); } finally { setCreativeLoading(false); } }
-  async function makeCalendar(e: FormEvent) { e.preventDefault(); setCalendarLoading(true); setError(""); try { const data = new FormData(); data.append("business_type", form.businessType || brand.business_type); data.append("business_name", form.businessName || brand.business_name); data.append("product_name", form.productName); data.append("offer", form.offer); data.append("days", calendarDays); data.append("frequency", frequency); if (selectedBrandId) data.append("brand_id", selectedBrandId); const r = await fetch(`${API_URL}/api/v1/calendar`, { method: "POST", body: data }); if (!r.ok) throw new Error((await r.text()) || "Calendar generation failed"); setCalendar(await r.json()); } catch (e) { setError(e instanceof Error ? e.message : "Could not create calendar"); } finally { setCalendarLoading(false); } }
-  async function downloadPost() { const node = document.getElementById("post-preview"); if (!node) return; const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true }); const a = document.createElement("a"); a.download = "instagram-post-branded.png"; a.href = dataUrl; a.click(); }
-  async function copy(text: string) { await navigator.clipboard.writeText(text); }
+  const [form, setForm] = useState(initial);
+  const [creativeFile, setCreativeFile] = useState<File | null>(null);
+  const [creativePreview, setCreativePreview] = useState("");
+  const [creativeImage, setCreativeImage] = useState("");
+  const [creativeContent, setCreativeContent] = useState<CreativeContent | null>(null);
+  const [creativePrompt, setCreativePrompt] = useState(
+    "Premium realistic marketing photography. Improve lighting, sharpness, composition and background while preserving the exact product."
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  return <main className="shell"><div className="container">
-    <header className="topbar"><div className="logo">ContentForge</div><span className="badge">AI Social Content Maker • All-in-One</span></header>
-    <section className="hero"><h1>One workspace for your complete social content.</h1><p>Upload a normal photo, upgrade it into a marketing image, generate the post and reel content, save your brand, and build your publishing calendar — all in one place.</p></section>
-    <section className="card" style={{ marginBottom: 22 }}><div className="section-head"><div><h2>✨ AI Creative Studio</h2><div className="muted">The photo workflow is now built directly into the main content maker. No separate studio needed.</div></div></div><div className="grid"><section><form className="form" onSubmit={runCreative}><div className="row"><Field label="Business type" value={form.businessType} onChange={(v) => update("businessType", v)} placeholder="e.g. Bakery, Café, Salon" /><Field label="Business name" value={form.businessName} onChange={(v) => update("businessName", v)} placeholder="e.g. Urban Crust Bakery" /></div><Field label="Product / service" value={form.productName} onChange={(v) => update("productName", v)} placeholder="e.g. Chocolate Truffle Cake" /><Field label="Offer" value={form.offer} onChange={(v) => update("offer", v)} placeholder="e.g. 20% Off" /><div className="field"><label>Creative direction</label><textarea value={creativePrompt} onChange={(e) => setCreativePrompt(e.target.value)} /></div><div className="field"><label>Raw photo</label><input type="file" accept="image/png,image/jpeg,image/webp" onChange={onCreativeFile} /></div>{creativePreview && <img src={creativePreview} alt="Original upload" style={{ width: "100%", maxHeight: 320, objectFit: "cover", borderRadius: 16 }} />}{creativeError && <div className="error">{creativeError}</div>}<button className="primary" disabled={creativeLoading || !creativeFile}>{creativeLoading ? "AI is creating everything…" : "✨ Upgrade Photo + Create Content"}</button></form></section><section><div className="muted">Original → AI-upgraded marketing image</div><div style={{ marginTop: 12 }}>{creativeImage ? <img src={creativeImage} alt="AI upgraded marketing image" style={{ width: "100%", borderRadius: 18, display: "block" }} /> : <div className="preview" style={{ minHeight: 320, display: "grid", placeItems: "center", padding: 30 }}><span className="muted">Your upgraded image will appear here.</span></div>}</div>{creativeContent && <div className="results" style={{ marginTop: 18 }}><div className="result-box"><strong>{creativeContent.headline}</strong><p>{creativeContent.subheadline}</p><p>{creativeContent.caption}</p><div className="tags">{creativeContent.hashtags.map((h) => <span className="tag" key={h}>{h}</span>)}</div><p><b>CTA:</b> {creativeContent.cta}</p></div></div>}</section></div>{creativeContent && <div className="results" style={{ marginTop: 18 }}><div className="result-box"><strong>Reel concepts</strong>{creativeContent.reel_ideas.map((r, index) => <article key={`${r.title}-${index}`} style={{ marginTop: 14 }}><p><b>{r.title}</b> · {r.duration}</p><p>Hook: {r.hook}</p><ol>{r.script.map((line, i) => <li key={i}>{line}</li>)}</ol></article>)}</div></div>}</section>
-    <section className="card brand-card"><div className="section-head"><div><h2>Brand studio</h2><div className="muted">Reusable identity for every future campaign.</div></div><select value={selectedBrandId} onChange={(e) => selectBrand(e.target.value)}><option value="">New brand profile</option>{brands.map((b) => <option key={b.id} value={b.id}>{b.business_name}</option>)}</select></div>
-      <div className="brand-grid"><Field label="Business name *" value={brand.business_name} onChange={(v) => updateBrand("business_name", v)} placeholder="Bean & Brew" required /><Field label="Business type *" value={brand.business_type} onChange={(v) => updateBrand("business_type", v)} placeholder="Cafe" required /><Field label="Tagline" value={brand.tagline} onChange={(v) => updateBrand("tagline", v)} placeholder="Made fresh, made happy" /><Field label="Social handle" value={brand.social_handle} onChange={(v) => updateBrand("social_handle", v)} placeholder="@beanandbrew" /></div>
-      <div className="brand-grid colors"><ColorField label="Primary" value={brand.primary_color} onChange={(v) => updateBrand("primary_color", v)} /><ColorField label="Secondary" value={brand.secondary_color} onChange={(v) => updateBrand("secondary_color", v)} /><ColorField label="Accent" value={brand.accent_color} onChange={(v) => updateBrand("accent_color", v)} /><div className="field"><label>Font</label><select value={brand.font_family} onChange={(e) => updateBrand("font_family", e.target.value)}>{["Inter", "Arial", "Georgia", "Trebuchet MS", "Verdana"].map((f) => <option key={f}>{f}</option>)}</select></div></div>
-      <div className="brand-grid"><Field label="Phone" value={brand.phone} onChange={(v) => updateBrand("phone", v)} placeholder="98765 43210" /><Field label="Location" value={brand.location} onChange={(v) => updateBrand("location", v)} placeholder="Connaught Place" /><div className="field logo-field"><label>Logo (PNG/JPG/WebP, max 1.5 MB)</label><input type="file" accept="image/png,image/jpeg,image/webp" onChange={onLogo} />{brand.logo_data && <img src={brand.logo_data} alt="Logo preview" className="logo-preview" />}</div></div>
-      <div className="brand-actions"><button className="primary small" disabled={brandLoading || !brand.business_name || !brand.business_type} onClick={saveBrand}>{brandLoading ? "Saving…" : selectedBrandId ? "Save changes" : "Save brand profile"}</button>{selectedBrandId && <button className="secondary small" disabled={brandLoading} onClick={deleteBrand}>Delete profile</button>}{brandMessage && <span className="muted">{brandMessage}</span>}</div>
-    </section>
-    <div className="grid"><section className="card"><h2>Content brief</h2><div className="muted">Add what you want to promote today.</div><form className="form" onSubmit={generate}><div className="row"><Field label="Business type *" value={form.businessType} onChange={(v) => update("businessType", v)} placeholder="e.g. Cafe, Salon, Gym" required /><Field label="Business name" value={form.businessName} onChange={(v) => update("businessName", v)} placeholder="e.g. Bean & Brew" /></div><Field label="Product / service *" value={form.productName} onChange={(v) => update("productName", v)} placeholder="e.g. Cold Coffee" required /><div className="row"><Field label="Offer" value={form.offer} onChange={(v) => update("offer", v)} placeholder="e.g. Buy 1 Get 1" /><Field label="Price" value={form.price} onChange={(v) => update("price", v)} placeholder="e.g. ₹149" /></div><div className="row"><Field label="Location" value={form.location} onChange={(v) => update("location", v)} placeholder="e.g. Connaught Place" /><Field label="Phone" value={form.phone} onChange={(v) => update("phone", v)} placeholder="e.g. 98765 43210" /></div><div className="field"><label>Extra information</label><textarea value={form.additionalInfo} onChange={(e) => update("additionalInfo", e.target.value)} placeholder="Opening hours, special details, delivery info..." /></div><div className="field"><label>Product photo</label><div className="upload"><input id="photo" type="file" accept="image/png,image/jpeg,image/webp" onChange={onPhoto} /></div></div>{error && <div className="error">{error}</div>}<button className="primary" disabled={loading || !form.businessType || !form.productName}>{loading ? "Creating your content…" : "✨ Generate Content"}</button></form></section>
-      <section className="card"><h2>Branded post preview</h2><div className="muted">Your saved brand identity is applied automatically.</div><div className="preview-wrap" style={{ marginTop: 18 }}><div id="post-preview" className="preview" style={{ background: brand.primary_color, fontFamily: brand.font_family }}>{photo && <img src={photo} alt="Product preview" />}<div className="overlay" style={{ background: `linear-gradient(180deg, ${brand.primary_color}22, ${brand.primary_color}dd)` }} />{brand.logo_data && <img className="preview-logo" src={brand.logo_data} alt="Brand logo" />}{result?.design.price && <div className="price" style={{ background: brand.secondary_color, color: brand.primary_color }}>{result.design.price}</div>}<div className="post-copy"><div className="post-brand" style={{ color: brand.accent_color }}>{brand.social_handle || brand.business_name || form.businessName || form.businessType || "Your Business"}</div><h3>{result?.headline || form.offer || form.productName || "Your next post"}</h3><p>{result?.subheadline || brand.tagline || "Your offer, ready for Instagram."}</p></div></div></div>{result && <div className="results"><div className="actions"><button className="secondary" onClick={downloadPost}>Download PNG</button><button className="secondary" onClick={() => copy(result.caption)}>Copy caption</button></div><div className="result-box"><strong>Caption</strong><p>{result.caption}</p></div><div className="result-box"><strong>Hashtags</strong><div className="tags">{result.hashtags.map((tag) => <span className="tag" key={tag} style={{ color: brand.accent_color }}>{tag}</span>)}</div></div></div>}</section></div>
-    {result && <section className="card" style={{ marginTop: 22 }}><h2>AI content ideas</h2><div className="muted">Reels, carousels, and posting guidance from V2.</div><div className="results"><div className="result-box"><strong>Reel ideas</strong>{result.reel_ideas.map((r) => <article key={r.title} style={{ marginBottom: 17 }}><p><b>{r.title}</b> · {r.duration}</p><p>Hook: {r.hook}</p><ol>{r.script.map((line, i) => <li key={i}>{line}</li>)}</ol></article>)}</div><div className="result-box"><strong>Carousel ideas</strong>{result.carousel_ideas.map((c) => <article key={c.title} style={{ marginBottom: 14 }}><p><b>{c.title}</b></p><ol>{c.slides.map((s, i) => <li key={i}>{s}</li>)}</ol></article>)}</div><div className="result-box"><strong>Posting suggestion</strong><p><b>{result.posting_suggestion.frequency}</b> · {result.posting_suggestion.best_time}</p><p>Best days: {result.posting_suggestion.best_days.join(", ")}</p><p>{result.posting_suggestion.tip}</p></div></div></section>}
-    <section className="card" style={{ marginTop: 22 }}><div className="section-head"><div><h2>Content calendar</h2><div className="muted">Build a ready-to-use publishing plan from your current brief.</div></div></div><form className="calendar-controls" onSubmit={makeCalendar}><div className="field"><label>Plan length</label><select value={calendarDays} onChange={(e) => setCalendarDays(e.target.value)}><option value="7">7 days</option><option value="30">30 days</option></select></div><div className="field"><label>Posts per week</label><select value={frequency} onChange={(e) => setFrequency(e.target.value)}><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="7">7</option></select></div><button className="primary small" disabled={calendarLoading || !form.productName}>{calendarLoading ? "Planning…" : "📅 Generate calendar"}</button></form>{calendar && <div className="calendar-grid">{calendar.calendar.map((item) => <article className="calendar-item" key={`${item.date}-${item.title}`}><div className="calendar-date"><b>{item.day}</b><span>{item.date}</span></div><span className="type-pill">{item.content_type}</span><h3>{item.title}</h3><p>{item.concept}</p><span className="status">{item.status}</span></article>)}</div>}</section>
-  </div></main>;
+  useEffect(() => () => {
+    if (creativePreview) URL.revokeObjectURL(creativePreview);
+  }, [creativePreview]);
+
+  function update(key: keyof typeof initial, value: string) {
+    setForm((old) => ({ ...old, [key]: value }));
+  }
+
+  function onCreativeFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    if (creativePreview) URL.revokeObjectURL(creativePreview);
+    setCreativeFile(file);
+    setCreativePreview(file ? URL.createObjectURL(file) : "");
+    setCreativeImage("");
+    setCreativeContent(null);
+    setError("");
+  }
+
+  async function generate() {
+    if (!creativeFile) {
+      setError("Upload a product photo first.");
+      return;
+    }
+    if (!form.businessName || !form.businessType || !form.productName) {
+      setError("Please enter business name, business type and product/service.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setCreativeImage("");
+    setCreativeContent(null);
+
+    try {
+      const imageData = new FormData();
+      imageData.append("image", creativeFile);
+      imageData.append("prompt", creativePrompt);
+      imageData.append("business_name", form.businessName);
+      imageData.append("product_name", form.productName);
+
+      const imageResponse = await fetch(`${API_URL}/api/v1/creative/image`, {
+        method: "POST",
+        body: imageData,
+      });
+      if (!imageResponse.ok) {
+        throw new Error((await imageResponse.text()) || "Image generation failed");
+      }
+
+      const imageResult = await imageResponse.json();
+      setCreativeImage(imageResult.image_data);
+
+      const contentData = new FormData();
+      contentData.append("business_type", form.businessType);
+      contentData.append("business_name", form.businessName);
+      contentData.append("product_name", form.productName);
+      contentData.append("offer", form.offer);
+      contentData.append("price", "");
+      contentData.append("location", form.address);
+      contentData.append("phone", form.phone);
+      contentData.append("additional_info", form.additionalInfo);
+
+      const contentResponse = await fetch(`${API_URL}/api/v1/generate`, {
+        method: "POST",
+        body: contentData,
+      });
+      if (!contentResponse.ok) {
+        throw new Error((await contentResponse.text()) || "Content generation failed");
+      }
+
+      const contentResult = await contentResponse.json();
+      setCreativeContent(contentResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="shell">
+      <div className="container">
+        <header className="topbar">
+          <div className="logo">ContentForge</div>
+          <span className="badge">AI Social Content Maker</span>
+        </header>
+
+        <section className="hero">
+          <h1>Create professional social content in one simple workflow.</h1>
+          <p>Enter the business details, upload a product photo, and let AI create the marketing image and social content.</p>
+        </section>
+
+        <section className="card">
+          <div className="section-head">
+            <div>
+              <h2>Business Information</h2>
+              <div className="muted">Only the basic information needed to create accurate content.</div>
+            </div>
+          </div>
+
+          <div className="form">
+            <div className="row">
+              <Field label="Business name *" value={form.businessName} onChange={(v) => update("businessName", v)} placeholder="e.g. Urban Threads" required />
+              <Field label="Business type *" value={form.businessType} onChange={(v) => update("businessType", v)} placeholder="e.g. Clothing brand" required />
+            </div>
+            <div className="row">
+              <Field label="Contact number" value={form.phone} onChange={(v) => update("phone", v)} placeholder="e.g. 98765 43210" />
+              <Field label="Address" value={form.address} onChange={(v) => update("address", v)} placeholder="e.g. Vasant Kunj, New Delhi" />
+            </div>
+            <div className="field">
+              <label>Additional information <span className="muted">(optional)</span></label>
+              <textarea value={form.additionalInfo} onChange={(e) => update("additionalInfo", e.target.value)} placeholder="Opening hours, delivery details, special features, website, social handle, etc." />
+            </div>
+          </div>
+        </section>
+
+        <section className="card" style={{ marginTop: 22 }}>
+          <div className="section-head">
+            <div>
+              <h2>✨ AI Image Generation</h2>
+              <div className="muted">Upload an ordinary product photo and turn it into a professional marketing image.</div>
+            </div>
+          </div>
+
+          <div className="form">
+            <div className="row">
+              <Field label="Product / service *" value={form.productName} onChange={(v) => update("productName", v)} placeholder="e.g. Oversized Black Hoodie" required />
+              <Field label="Offer or price" value={form.offer} onChange={(v) => update("offer", v)} placeholder="e.g. ₹999 or 20% off" />
+            </div>
+
+            <div className="field">
+              <label>Creative direction</label>
+              <textarea value={creativePrompt} onChange={(e) => setCreativePrompt(e.target.value)} />
+            </div>
+
+            <div className="field">
+              <label>Product photo *</label>
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onCreativeFile} />
+            </div>
+
+            {creativePreview && (
+              <div>
+                <div className="muted" style={{ marginBottom: 8 }}>Original photo</div>
+                <img src={creativePreview} alt="Original product" style={{ width: "100%", maxHeight: 360, objectFit: "cover", borderRadius: 16 }} />
+              </div>
+            )}
+
+            {error && <div className="error">{error}</div>}
+
+            <button className="primary" disabled={loading || !creativeFile} onClick={generate}>
+              {loading ? "AI is creating your content…" : "✨ Generate Marketing Content"}
+            </button>
+          </div>
+        </section>
+
+        {(creativeImage || creativeContent) && (
+          <section className="card" style={{ marginTop: 22 }}>
+            <div className="section-head">
+              <div>
+                <h2>Generated Content</h2>
+                <div className="muted">Your upgraded image and ready-to-use social content.</div>
+              </div>
+            </div>
+
+            {creativeImage && (
+              <img src={creativeImage} alt="AI generated marketing image" style={{ width: "100%", maxHeight: 700, objectFit: "contain", borderRadius: 18, display: "block", background: "#f4f4f5" }} />
+            )}
+
+            {creativeContent && (
+              <div className="results" style={{ marginTop: 20 }}>
+                <div className="result-box">
+                  <strong>{creativeContent.headline}</strong>
+                  <p>{creativeContent.subheadline}</p>
+                  <p>{creativeContent.caption}</p>
+                  <div className="tags">{creativeContent.hashtags.map((h) => <span className="tag" key={h}>{h}</span>)}</div>
+                  <p><b>CTA:</b> {creativeContent.cta}</p>
+                </div>
+
+                <div className="result-box">
+                  <strong>Reel ideas</strong>
+                  {creativeContent.reel_ideas.map((reel, index) => (
+                    <article key={`${reel.title}-${index}`} style={{ marginTop: 14 }}>
+                      <p><b>{reel.title}</b> · {reel.duration}</p>
+                      <p>Hook: {reel.hook}</p>
+                      <ol>{reel.script.map((line, i) => <li key={i}>{line}</li>)}</ol>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </main>
+  );
 }
 
-function Field({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; required?: boolean }) { return <div className="field"><label>{label}</label><input required={required} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></div>; }
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <div className="field"><label>{label} color</label><div className="color-control"><input type="color" value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#171722"} onChange={(e) => onChange(e.target.value)} /><input value={value} onChange={(e) => onChange(e.target.value)} /></div></div>; }
+function Field({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; required?: boolean }) {
+  return (
+    <div className="field">
+      <label>{label}</label>
+      <input required={required} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+}
