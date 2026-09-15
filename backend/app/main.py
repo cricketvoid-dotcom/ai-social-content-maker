@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .services.brands import create_brand, delete_brand, get_brand, list_brands, update_brand
+from .services.calendar import generate_calendar
 from .services.content import generate_content
 
-app = FastAPI(title="AI Social Content Maker API", version="3.0.0")
+app = FastAPI(title="AI Social Content Maker API", version="4.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -45,9 +46,17 @@ class ContentResponse(BaseModel):
     posting_suggestion: dict = Field(default_factory=dict)
 
 
+class CalendarResponse(BaseModel):
+    business_name: str
+    business_type: str
+    period_days: int
+    frequency_per_week: int
+    calendar: list[dict]
+
+
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "ai-social-content-maker", "version": "3.0.0"}
+    return {"status": "ok", "service": "ai-social-content-maker", "version": "4.0.0"}
 
 
 @app.get("/api/v1/brands", response_model=list[BrandResponse])
@@ -81,6 +90,26 @@ def remove_brand(brand_id: int) -> dict:
     if not delete_brand(brand_id):
         raise HTTPException(status_code=404, detail="Brand profile not found")
     return {"deleted": True, "id": brand_id}
+
+
+@app.post("/api/v1/calendar", response_model=CalendarResponse)
+def calendar(
+    business_type: str = Form(...), business_name: str = Form(""),
+    product_name: str = Form(...), offer: str = Form(""), days: int = Form(7),
+    start_date: str | None = Form(None), frequency: int = Form(4),
+    brand_id: int | None = Form(None),
+) -> dict:
+    if brand_id is not None:
+        brand = get_brand(brand_id)
+        if not brand:
+            raise HTTPException(status_code=404, detail="Brand profile not found")
+        business_name = business_name or brand["business_name"]
+        business_type = business_type or brand["business_type"]
+    return generate_calendar(
+        business_name=business_name, business_type=business_type,
+        product_name=product_name, offer=offer, days=days,
+        start_date=start_date, frequency=frequency,
+    )
 
 
 @app.post("/api/v1/generate", response_model=ContentResponse)
