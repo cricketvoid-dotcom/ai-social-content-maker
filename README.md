@@ -1,20 +1,41 @@
 # AI Social Content Maker
 
-V1 MVP for creating Instagram-ready promotional content for local businesses.
+ContentForge is an AI-assisted social media content maker for local businesses. It turns one business brief into an Instagram post, caption, reels, carousels, and a reusable visual brand identity.
 
-## V1 goals
+## Versions
 
+### V1 — Core MVP
 - Enter business/product details
 - Upload a product photo
-- Generate a polished Instagram post concept
+- Generate an Instagram post concept
 - Generate caption, hashtags, and CTA
-- Export the post as a 1080x1080 PNG
+- Export the post as a PNG
+
+### V2 — Content AI
+- 3 reel concepts with hooks, scripts, and durations
+- 2 carousel concepts with slide-by-slide structure
+- Posting-day, time, and frequency suggestions
+- AI provider with deterministic local fallback
+
+### V3 — Business Branding
+- Save multiple business brand profiles in SQLite
+- Business name/type and tagline
+- Primary, secondary, and accent colors
+- Preferred font
+- Phone, location, and social handle
+- Logo upload with a 1.5 MB client-side limit
+- Select a saved brand and reuse it for future generations
+- Branded live post preview and PNG export
+- Brand identity is included in AI generation context
+- Brand CRUD API with automated persistence tests
 
 ## Architecture
 
 - `frontend/` — Next.js web app
 - `backend/` — FastAPI API
-- AI provider is isolated behind a small service layer so it can be swapped later.
+- `backend/app/services/content.py` — content generation and fallback logic
+- `backend/app/services/brands.py` — SQLite brand persistence
+- `backend/tests/` — backend tests
 
 ## Run locally
 
@@ -41,6 +62,16 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## V1 implementation note
+## Brand API
 
-The visual is rendered with HTML/CSS and browser canvas instead of asking an image model to draw text. This keeps prices, business names, offers, and contact information sharp and reliable.
+- `GET /api/v1/brands` — list saved profiles
+- `POST /api/v1/brands` — create a profile
+- `GET /api/v1/brands/{id}` — read a profile
+- `PUT /api/v1/brands/{id}` — replace/update a profile
+- `DELETE /api/v1/brands/{id}` — delete a profile
+
+The SQLite database is created automatically at `backend/contentforge.db` (or the path supplied by `BRAND_DB_PATH`).
+
+## Implementation note
+
+The visual post is rendered with HTML/CSS instead of asking an image model to draw text. This keeps prices, business names, offers, contact information, and branding sharp and reliable. Logo data is stored in the local SQLite profile for this MVP; production deployment should move binary assets to object storage.
