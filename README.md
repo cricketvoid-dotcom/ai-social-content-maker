@@ -1,41 +1,42 @@
 # AI Social Content Maker
 
-ContentForge is an AI-assisted social media content maker for local businesses. It turns one business brief into an Instagram post, caption, reels, carousels, and a reusable visual brand identity.
+AI-assisted social media content planning for local businesses.
 
-## Versions
+## Current version: V4 — Content Calendar
 
-### V1 — Core MVP
-- Enter business/product details
-- Upload a product photo
-- Generate an Instagram post concept
-- Generate caption, hashtags, and CTA
-- Export the post as a PNG
-
-### V2 — Content AI
-- 3 reel concepts with hooks, scripts, and durations
-- 2 carousel concepts with slide-by-slide structure
-- Posting-day, time, and frequency suggestions
-- AI provider with deterministic local fallback
-
-### V3 — Business Branding
-- Save multiple business brand profiles in SQLite
-- Business name/type and tagline
-- Primary, secondary, and accent colors
-- Preferred font
-- Phone, location, and social handle
-- Logo upload with a 1.5 MB client-side limit
-- Select a saved brand and reuse it for future generations
-- Branded live post preview and PNG export
-- Brand identity is included in AI generation context
-- Brand CRUD API with automated persistence tests
+- Save reusable business branding profiles
+- Generate an Instagram post, caption, hashtags, and CTA
+- Generate reel scripts and carousel concepts
+- Generate posting-time suggestions
+- Build a 7-day or 30-day content calendar
+- Choose a target publishing frequency from 2–7 posts/week
+- Use a saved brand profile when building the calendar
+- Export the branded post preview as PNG
+- SQLite persistence for brand profiles
+- Local deterministic fallback when no AI API key is configured
 
 ## Architecture
 
-- `frontend/` — Next.js web app
+- `frontend/` — Next.js + React + TypeScript web app
 - `backend/` — FastAPI API
-- `backend/app/services/content.py` — content generation and fallback logic
-- `backend/app/services/brands.py` — SQLite brand persistence
-- `backend/tests/` — backend tests
+- `backend/app/services/content.py` — V1/V2 content generation
+- `backend/app/services/brands.py` — V3 SQLite brand persistence
+- `backend/app/services/calendar.py` — V4 calendar planning
+
+## API
+
+- `GET /health`
+- `GET /api/v1/brands`
+- `POST /api/v1/brands`
+- `GET /api/v1/brands/{brand_id}`
+- `PUT /api/v1/brands/{brand_id}`
+- `DELETE /api/v1/brands/{brand_id}`
+- `POST /api/v1/generate`
+- `POST /api/v1/calendar`
+
+### Calendar request fields
+
+`business_type`, `business_name`, `product_name`, `offer`, `days` (7 or 30 in the UI), `start_date` (optional ISO date), `frequency` (2–7), and optional `brand_id`.
 
 ## Run locally
 
@@ -62,16 +63,20 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Brand API
+## Testing
 
-- `GET /api/v1/brands` — list saved profiles
-- `POST /api/v1/brands` — create a profile
-- `GET /api/v1/brands/{id}` — read a profile
-- `PUT /api/v1/brands/{id}` — replace/update a profile
-- `DELETE /api/v1/brands/{id}` — delete a profile
+From `backend/`:
 
-The SQLite database is created automatically at `backend/contentforge.db` (or the path supplied by `BRAND_DB_PATH`).
+```bash
+pytest
+```
 
-## Implementation note
+The test suite covers V1/V2 content shape and V4 calendar output. Live dependency installation/build execution may require a network-enabled development environment.
 
-The visual post is rendered with HTML/CSS instead of asking an image model to draw text. This keeps prices, business names, offers, contact information, and branding sharp and reliable. Logo data is stored in the local SQLite profile for this MVP; production deployment should move binary assets to object storage.
+## Product roadmap
+
+- V1 — Core MVP
+- V2 — Content AI
+- V3 — Business Branding
+- V4 — Content Calendar
+- V5 — Automation + analytics
