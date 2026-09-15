@@ -1,77 +1,42 @@
 # AI Social Content Maker
 
-AI-assisted social media content planning for local businesses.
+AI-assisted social media content planning and optimization for local businesses.
 
-## Current version: V5 — Automation + Analytics
+## Current version: V6 — Smart Content Optimizer
 
 - Save reusable business branding profiles
-- Generate an Instagram post, caption, hashtags, and CTA
+- Generate Instagram posts, captions, hashtags, and CTAs
 - Generate reel scripts and carousel concepts
-- Generate posting-time suggestions
-- Build a 7-day or 30-day content calendar
-- Choose a target publishing frequency from 2–7 posts/week
-- Use a saved brand profile when building the calendar
-- Export the branded post preview as PNG
-- SQLite persistence for brand profiles
+- Build 7-day or 30-day content calendars
+- Export branded post previews as PNG
 - Track impressions, reach, likes, comments, shares, saves, and clicks
 - Calculate engagement and click rates
-- Get rule-based performance recommendations
-- Create normalized scheduling records for future publisher integrations
-- Dedicated V5 Automation & Analytics dashboard at `/automation`
+- Get performance recommendations
+- Create normalized scheduling records
+- Optimize a content idea using its performance metrics
+- Receive a stronger hook, CTA, strategy, and recommended format length
 - Local deterministic fallback when no AI API key is configured
 
 ## Architecture
 
 - `frontend/` — Next.js + React + TypeScript web app
-- `frontend/app/automation/page.tsx` — V5 analytics and scheduling dashboard
 - `backend/` — FastAPI API
-- `backend/app/services/content.py` — V1/V2 content generation
-- `backend/app/services/brands.py` — V3 SQLite brand persistence
-- `backend/app/services/calendar.py` — V4 calendar planning
-- `backend/app/services/automation.py` — V5 scheduling, analytics, and recommendations
+- `backend/app/services/content.py` — V1/V2 generation
+- `backend/app/services/brands.py` — V3 SQLite branding
+- `backend/app/services/calendar.py` — V4 planning
+- `backend/app/services/automation.py` — V5 analytics and scheduling
+- `backend/app/services/optimizer.py` — V6 performance-driven optimization
 
-## API
+## V6 API
 
-- `GET /health`
-- `GET /api/v1/brands`
-- `POST /api/v1/brands`
-- `GET /api/v1/brands/{brand_id}`
-- `PUT /api/v1/brands/{brand_id}`
-- `DELETE /api/v1/brands/{brand_id}`
-- `POST /api/v1/generate`
-- `POST /api/v1/calendar`
-- `POST /api/v1/automation/schedule`
-- `POST /api/v1/analytics`
-- `POST /api/v1/analytics/recommendation`
+`POST /api/v1/optimizer`
 
-## V5 notes
+Fields:
+- `content_type`: Reel, Carousel, Post, or Story
+- `title`: content title
+- `metrics`: JSON string containing analytics metrics
 
-The scheduling endpoint creates a normalized schedule record; it does not pretend to publish directly to Instagram. Actual publishing requires an approved social-platform connection and the appropriate credentials/permissions.
-
-## Run locally
-
-### Backend
-
-```bash
-cd backend
-python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-Copy `backend/.env.example` to `backend/.env` and add an AI API key when using live AI generation.
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open `http://localhost:3000` or `/automation`.
+The optimizer is intentionally deterministic and explainable. It does not invent historical performance or claim access to a social platform account.
 
 ## Testing
 
@@ -81,7 +46,7 @@ From `backend/`:
 pytest
 ```
 
-The suite includes V1/V2 content, V4 calendar, and V5 automation/analytics tests. Live dependency installation/build execution may require a network-enabled development environment.
+The suite covers content generation, calendar planning, automation/analytics, and V6 optimization. Live dependency installation/build execution may require a network-enabled development environment.
 
 ## Product roadmap
 
@@ -90,3 +55,4 @@ The suite includes V1/V2 content, V4 calendar, and V5 automation/analytics tests
 - V3 — Business Branding
 - V4 — Content Calendar
 - V5 — Automation + analytics
+- V6 — Smart Content Optimizer
