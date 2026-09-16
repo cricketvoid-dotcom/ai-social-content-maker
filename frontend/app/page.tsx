@@ -37,14 +37,14 @@ export default function Home() {
 
   async function generateImage() {
     if (!creativeFile) { setError("Upload a product photo first."); return; }
-    if (!form.businessName || !form.businessType || !form.productName) { setError("Please complete the Business Information first."); return; }
+    if (!form.businessName.trim() || !form.businessType.trim() || !form.productName.trim()) { setError("For the marketing image, complete Business Name, Business Type, and Product / Service in Step 1."); return; }
     setImageLoading(true); setError(""); setCreativeImage("");
     try {
       const imageData = new FormData();
       imageData.append("image", creativeFile);
       imageData.append("prompt", creativePrompt);
-      imageData.append("business_name", form.businessName);
-      imageData.append("product_name", form.productName);
+      imageData.append("business_name", form.businessName.trim());
+      imageData.append("product_name", form.productName.trim());
       const response = await fetch(`${API_URL}/api/v1/creative/image`, { method: "POST", body: imageData });
       if (!response.ok) throw new Error((await response.text()) || "Image generation failed");
       const result = await response.json();
@@ -54,19 +54,28 @@ export default function Home() {
   }
 
   async function generateReels() {
-    if (!form.businessName || !form.businessType || !form.productName) { setError("Complete the Business Information in Step 1 first."); return; }
+    const missing: string[] = [];
+    if (!form.businessName.trim()) missing.push("Business Name");
+    if (!form.businessType.trim()) missing.push("Business Type");
+    if (missing.length) {
+      setError(`Complete these Business Information fields in Step 1 first: ${missing.join(", ")}.`);
+      return;
+    }
+
     setReelLoading(true); setError(""); setCreativeContent(null);
     try {
       // Every Reel is generated from the complete Step 1 business context.
+      // Product/service is optional for Reels; the AI can still use the business
+      // name, type, location, phone, offer and additional information.
       const contentData = new FormData();
-      contentData.append("business_type", form.businessType);
-      contentData.append("business_name", form.businessName);
-      contentData.append("product_name", form.productName);
-      contentData.append("offer", form.offer);
+      contentData.append("business_type", form.businessType.trim());
+      contentData.append("business_name", form.businessName.trim());
+      contentData.append("product_name", form.productName.trim());
+      contentData.append("offer", form.offer.trim());
       contentData.append("price", "");
-      contentData.append("location", form.address);
-      contentData.append("phone", form.phone);
-      contentData.append("additional_info", form.additionalInfo);
+      contentData.append("location", form.address.trim());
+      contentData.append("phone", form.phone.trim());
+      contentData.append("additional_info", form.additionalInfo.trim());
       contentData.append("reels_per_week", String(reelsPerWeek));
       contentData.append("max_reels_per_day", String(maxReelsPerDay));
       const response = await fetch(`${API_URL}/api/v1/generate`, { method: "POST", body: contentData });
@@ -85,7 +94,7 @@ export default function Home() {
         <div className="form">
           <div className="row"><Field label="Business name *" value={form.businessName} onChange={(v) => update("businessName", v)} placeholder="e.g. Urban Threads" required /><Field label="Business type *" value={form.businessType} onChange={(v) => update("businessType", v)} placeholder="e.g. Clothing brand" required /></div>
           <div className="row"><Field label="Contact number" value={form.phone} onChange={(v) => update("phone", v)} placeholder="e.g. 98765 43210" /><Field label="Address / location" value={form.address} onChange={(v) => update("address", v)} placeholder="e.g. Vasant Kunj, New Delhi" /></div>
-          <div className="field"><label>Product / service *</label><input value={form.productName} onChange={(e) => update("productName", e.target.value)} placeholder="e.g. Oversized Black Hoodie / Haircut / Home Bakery" /></div>
+          <div className="field"><label>Product / service</label><input value={form.productName} onChange={(e) => update("productName", e.target.value)} placeholder="e.g. Oversized Black Hoodie / Haircut / Home Bakery" /></div>
           <div className="field"><label>Offer or price</label><input value={form.offer} onChange={(e) => update("offer", e.target.value)} placeholder="e.g. ₹999, 20% off, Free delivery" /></div>
           <div className="field"><label>Additional business information <span className="muted">(optional)</span></label><textarea value={form.additionalInfo} onChange={(e) => update("additionalInfo", e.target.value)} placeholder="Opening hours, delivery details, special features, target customers, website, social handle, unique selling points, etc." /></div>
         </div>
