@@ -103,11 +103,7 @@ def _local_v2(*, business_type: str, business_name: str, product_name: str,
               additional_info: str, **kwargs: Any) -> dict[str, Any]:
     product = product_name.strip()
     return {
-        "reel_ideas": _simple_reels(
-            business_type=business_type, business_name=business_name, product_name=product,
-            offer=offer, reels_per_week=kwargs.get("reels_per_week", 3),
-            max_reels_per_day=kwargs.get("max_reels_per_day", 1),
-        ),
+        "reel_ideas": _simple_reels(business_type=business_type, business_name=business_name, product_name=product, offer=offer, reels_per_week=kwargs.get("reels_per_week", 3), max_reels_per_day=kwargs.get("max_reels_per_day", 1)),
         "carousel_ideas": [{"title": f"Why {product}?", "slides": ["Hook", "What it is", "Top benefits", "Offer / price", "CTA"]}, {"title": "Before You Buy", "slides": ["Common problem", "What to look for", "Why this product", "Proof / result", "How to order"]}],
         "posting_suggestion": {"best_days": ["Tuesday", "Thursday", "Saturday"], "best_time": "6:00 PM–8:00 PM local time", "frequency": f"{kwargs.get('reels_per_week', 3)} reels per week", "tip": "Use the generated Reel schedule, then adjust posting times after you collect performance data."},
     }
@@ -125,6 +121,7 @@ async def generate_content(*, include_v2: bool = False, **kwargs: Any) -> dict[s
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     reels_per_week = max(1, min(int(kwargs.get("reels_per_week", 3)), 21))
     max_reels_per_day = max(1, min(int(kwargs.get("max_reels_per_day", 1)), 3))
+    prompt_values = {**kwargs, "reels_per_week": reels_per_week, "max_reels_per_day": max_reels_per_day}
     task = """Create Instagram content for a local business. Return ONLY valid JSON.
 Keys: headline, subheadline, caption, hashtags, cta, reel_ideas, carousel_ideas, posting_suggestion.
 hashtags: array of 5 strings.
@@ -141,7 +138,7 @@ Location: {location}
 Phone: {phone}
 Extra info: {additional_info}
 Brand tagline: {brand_tagline}
-""".format(reels_per_week=reels_per_week, max_reels_per_day=max_reels_per_day, **kwargs)
+""".format(**prompt_values)
     try:
         response = await client.chat.completions.create(model=model, temperature=0.8, response_format={"type": "json_object"}, messages=[
             {"role": "system", "content": "You are an expert local-business social media strategist. Make the output simple for a business owner to shoot and post."},
