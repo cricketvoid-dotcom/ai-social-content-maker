@@ -28,21 +28,37 @@ def is_allowed(url: str, allowed_hosts: list[str]) -> bool:
     return any(host == item or host.endswith("." + item) for item in allowed_hosts)
 
 
+def choose_providers() -> list[str]:
+    choices = {"1": "chatgpt", "2": "gemini", "3": "claude"}
+    print("\nContentForge Browser Authorization")
+    print("Choose the two AI accounts/sites you want to authorize:")
+    print("1. ChatGPT")
+    print("2. Gemini")
+    print("3. Claude")
+    raw = input("Enter two numbers separated by a comma (example: 1,2): ").strip()
+    selected = [choices.get(item.strip()) for item in raw.split(",")]
+    selected = [item for item in selected if item]
+    if len(selected) != 2 or len(set(selected)) != 2:
+        raise SystemExit("Please choose exactly two different providers.")
+    return selected
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Authorize up to two AI providers in ContentForge's dedicated Chrome profile."
+        description="Authorize two AI providers in ContentForge's dedicated Chrome profile."
     )
     parser.add_argument(
         "providers",
-        nargs="+",
+        nargs="*",
         choices=["chatgpt", "gemini", "claude"],
-        help="One or two providers to authorize.",
+        help="Optional provider names. If omitted, an interactive two-provider selector is shown.",
     )
     args = parser.parse_args()
 
-    if len(args.providers) > 2:
-        parser.error("Choose at most two providers.")
-    if len(set(args.providers)) != len(args.providers):
+    selected = args.providers or choose_providers()
+    if len(selected) != 2:
+        parser.error("Choose exactly two providers.")
+    if len(set(selected)) != 2:
         parser.error("Each provider can only be selected once.")
 
     config = load_json(CONFIG_PATH)
@@ -90,7 +106,7 @@ def main() -> int:
 
         page.route("**/*", guard)
 
-        for provider_id in args.providers:
+        for provider_id in selected:
             provider = providers[provider_id]
             print(f"\nOpening {provider['name']} in the dedicated ContentForge Chrome profile...")
             page.goto(provider["url"], wait_until="domcontentloaded")
@@ -110,11 +126,8 @@ def main() -> int:
         context.close()
 
     print("\nSetup complete.")
-    print(
-        "Authorized providers:",
-        ", ".join(state["authorized_providers"]) or "none",
-    )
-    print(f"Session profile: {PROFILE_DIR}")
+    print("Authorized providers:", ", ".join(state["authorized_providers"]) or "none")
+    print(f"Dedicated Chrome profile: {PROFILE_DIR}")
     print("Passwords and login credentials are not written to auth-state.json.")
     return 0
 
