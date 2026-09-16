@@ -17,3 +17,11 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+
+# ContentForge local browser credentials/session data
+browser-agent/profile/
+browser-agent/auth-state.json
+browser-agent/workspace/input/*
+browser-agent/workspace/output/*
+!browser-agent/workspace/input/.gitkeep
+!browser-agent/workspace/output/.gitkeep
