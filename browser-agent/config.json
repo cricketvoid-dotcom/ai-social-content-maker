@@ -1,6 +1,9 @@
 {
   "allowed_hosts": [
-    "example.com"
+    "chatgpt.com",
+    "chat.openai.com",
+    "gemini.google.com",
+    "claude.ai"
   ],
   "headless": false,
   "download_timeout_ms": 120000,
