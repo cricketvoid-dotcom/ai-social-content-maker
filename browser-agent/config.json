@@ -1,7 +1,6 @@
 {
   "allowed_hosts": [
     "chatgpt.com",
-    "chat.openai.com",
     "gemini.google.com",
     "claude.ai"
   ],
