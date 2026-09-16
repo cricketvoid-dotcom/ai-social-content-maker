@@ -1,0 +1,8 @@
+{
+  "allowed_hosts": [
+    "example.com"
+  ],
+  "headless": false,
+  "download_timeout_ms": 120000,
+  "navigation_timeout_ms": 30000
+}
