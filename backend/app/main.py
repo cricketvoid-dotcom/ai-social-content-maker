@@ -112,7 +112,16 @@ async def creative_image(image: UploadFile=File(...), prompt: str=Form(""), busi
     except Exception as exc:
         raise HTTPException(502, f"Image generation failed: {exc}")
 @app.post("/api/v1/generate", response_model=ContentResponse)
-async def generate(business_type:str=Form(...),business_name:str=Form(""),product_name:str=Form(...),offer:str=Form(""),price:str=Form(""),location:str=Form(""),phone:str=Form(""),additional_info:str=Form(""),brand_id:int|None=Form(None),brand_tagline:str=Form(""),brand_primary_color:str=Form("#171722"),brand_secondary_color:str=Form("#ffffff"),brand_accent_color:str=Form("#5146d8"),brand_font_family:str=Form("Inter"),brand_social_handle:str=Form(""),brand_logo:str=Form(""),photo:UploadFile|None=File(None)):
+async def generate(
+    business_type:str=Form(...), business_name:str=Form(""), product_name:str=Form(...), offer:str=Form(""),
+    price:str=Form(""), location:str=Form(""), phone:str=Form(""), additional_info:str=Form(""),
+    reels_per_week:int=Form(3), max_reels_per_day:int=Form(1), brand_id:int|None=Form(None),
+    brand_tagline:str=Form(""), brand_primary_color:str=Form("#171722"), brand_secondary_color:str=Form("#ffffff"),
+    brand_accent_color:str=Form("#5146d8"), brand_font_family:str=Form("Inter"), brand_social_handle:str=Form(""),
+    brand_logo:str=Form(""), photo:UploadFile|None=File(None)
+):
+    if reels_per_week < 1 or reels_per_week > 21: raise HTTPException(400,"Reels per week must be between 1 and 21.")
+    if max_reels_per_day < 1 or max_reels_per_day > 3: raise HTTPException(400,"Maximum reels per day must be between 1 and 3.")
     if brand_id is not None and not get_brand(brand_id): raise HTTPException(404,"Brand profile not found")
-    result=await generate_content(include_v2=True,business_type=business_type,business_name=business_name,product_name=product_name,offer=offer,price=price,location=location,phone=phone,additional_info=additional_info,has_photo=photo is not None,brand_id=brand_id,brand_tagline=brand_tagline,brand_primary_color=brand_primary_color,brand_secondary_color=brand_secondary_color,brand_accent_color=brand_accent_color,brand_font_family=brand_font_family,brand_social_handle=brand_social_handle,brand_logo=brand_logo)
+    result=await generate_content(include_v2=True,business_type=business_type,business_name=business_name,product_name=product_name,offer=offer,price=price,location=location,phone=phone,additional_info=additional_info,has_photo=photo is not None,reels_per_week=reels_per_week,max_reels_per_day=max_reels_per_day,brand_id=brand_id,brand_tagline=brand_tagline,brand_primary_color=brand_primary_color,brand_secondary_color=brand_secondary_color,brand_accent_color=brand_accent_color,brand_font_family=brand_font_family,brand_social_handle=brand_social_handle,brand_logo=brand_logo)
     return ContentResponse(**result)
