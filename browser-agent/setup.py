@@ -4,6 +4,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
@@ -20,6 +21,11 @@ def load_json(path: Path) -> dict:
 
 def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+
+def is_allowed(url: str, allowed_hosts: list[str]) -> bool:
+    host = (urlparse(url).hostname or "").lower().rstrip(".")
+    return any(host == item or host.endswith("." + item) for item in allowed_hosts)
 
 
 def main() -> int:
@@ -59,7 +65,9 @@ def main() -> int:
         except json.JSONDecodeError:
             pass
 
-    state["authorized_providers"] = [p for p in state["authorized_providers"] if p in providers]
+    state["authorized_providers"] = [
+        p for p in state["authorized_providers"] if p in providers
+    ]
 
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
@@ -75,11 +83,7 @@ def main() -> int:
         page = context.pages[0] if context.pages else context.new_page()
 
         def guard(route):
-            request_url = route.request.url
-            from urllib.parse import urlparse
-            host = (urlparse(request_url).hostname or "").lower().rstrip(".")
-            allowed = any(host == h or host.endswith("." + h) for h in config["allowed_hosts"])
-            if allowed:
+            if is_allowed(route.request.url, config["allowed_hosts"]):
                 route.continue_()
             else:
                 route.abort()
@@ -92,7 +96,9 @@ def main() -> int:
             page.goto(provider["url"], wait_until="domcontentloaded")
             print(f"{provider['name']} is open. Log in manually with the account you want ContentForge to use.")
             print("Do not send your password, verification code, cookies, or session data to ContentForge.")
-            input(f"When you have finished signing in to {provider['name']}, press Enter here to authorize it... ")
+            input(
+                f"When you have finished signing in to {provider['name']}, press Enter here to authorize it... "
+            )
 
             if provider_id not in state["authorized_providers"]:
                 state["authorized_providers"].append(provider_id)
@@ -104,7 +110,10 @@ def main() -> int:
         context.close()
 
     print("\nSetup complete.")
-    print("Authorized providers:", ", ".join(state["authorized_providers"]) or "none")
+    print(
+        "Authorized providers:",
+        ", ".join(state["authorized_providers"]) or "none",
+    )
     print(f"Session profile: {PROFILE_DIR}")
     print("Passwords and login credentials are not written to auth-state.json.")
     return 0
